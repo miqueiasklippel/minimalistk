@@ -1,0 +1,38 @@
+name: Release
+
+# Publica automaticamente uma release com manifest.json e theme.css
+# sempre que a versão do manifest.json mudar no ramo main.
+# A tag usa a versão exata, sem o prefixo "v", como exige o Obsidian.
+
+on:
+  push:
+    branches: [main]
+    paths: [manifest.json]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Ler a versão do manifest.json
+        id: manifest
+        run: echo "version=$(jq -r .version manifest.json)" >> "$GITHUB_OUTPUT"
+
+      - name: Criar a release, se ainda não existir
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.manifest.outputs.version }}
+        run: |
+          if gh release view "$VERSION" >/dev/null 2>&1; then
+            echo "A release $VERSION já existe; nada a fazer."
+          else
+            gh release create "$VERSION" manifest.json theme.css \
+              --target "$GITHUB_SHA" \
+              --title "$VERSION" \
+              --notes "MinimalistK $VERSION — tema minimalista para o Obsidian em azul petróleo, com modos claro e escuro."
+          fi
